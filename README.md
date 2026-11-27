@@ -1,4 +1,4 @@
-# LIVE SCHEDULE
+# GO LIVE
 
 ระบบจัดการตารางไลฟ์ของพนักงาน (Shopee / TikTok) — Next.js 15 (App Router) · TypeScript strict · OMNIX Design System · Recharts · Prisma (PostgreSQL)
 

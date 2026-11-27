@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variabl
 const plex = IBM_Plex_Sans_Thai({ subsets: ["thai", "latin"], weight: ["400", "500", "600"], variable: "--font-plex-thai", display: "swap" });
 const noto = Noto_Sans_Thai({ subsets: ["thai"], weight: ["400", "500", "600"], variable: "--font-noto-thai", display: "swap" });
 
-export const metadata: Metadata = { title: "LIVE SCHEDULE", description: "ระบบจัดการตารางไลฟ์ Shopee / TikTok" };
+export const metadata: Metadata = { title: "GO LIVE", description: "GO LIVE — ระบบจัดการตารางไลฟ์ Shopee / TikTok ของทีม", applicationName: "GO LIVE" };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

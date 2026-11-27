@@ -11,6 +11,7 @@ import { storage } from "@/lib/storage";
 import { fmtLong, fmtTs, todayBangkok } from "@/lib/time";
 import { Avatar, Button, PlatformMark, ToastProvider } from "./ui";
 import { AutoSync } from "./AutoSync";
+import appIcon from "@/assets/go-live-icon.png";
 import {
   BarChart, Bell, Calendar, Check, CheckCircle, CheckDouble, ChevronDown, ChevronRight, Cog, Error as ErrorIcon, File, Grid, Group,
   Import, InfoCircle, Menu, Moon, Shield, Store as StoreIcon, Sun, Swap, User, X,
@@ -54,9 +55,10 @@ function Shell({ children }: { children: ReactNode }) {
 /* ================= Sidebar ================= */
 function Brand() {
   return (
-    <Link href="/schedule/me" className="ls-brand" aria-label="LIVE SCHEDULE — ไปที่ตารางไลฟ์ของฉัน">
-      <span className="ls-brand__mark" aria-hidden>LS</span>
-      <span className="ls-brand__text"><strong>LIVE SCHEDULE</strong><span>TEAM WORKSPACE</span></span>
+    <Link href="/schedule/me" className="ls-brand" aria-label="GO LIVE — ไปที่ตารางไลฟ์ของฉัน">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={appIcon.src} width={40} height={40} alt="" className="ls-brand__icon" />
+      <span className="ls-brand__text"><strong className="ls-brand__name">GO <span className="ls-brand__live">LIVE</span></strong><span>TEAM WORKSPACE</span></span>
     </Link>
   );
 }
@@ -196,7 +198,7 @@ function useCrumbs(): Crumb[] {
     const p = platformByCode(shop.platform);
     return [{ label: <><PlatformMark platform={p.code} />{p.name}</>, href: `/platform/${p.slug}` }, { label: shop.name }];
   }
-  return [{ label: "LIVE SCHEDULE" }];
+  return [{ label: "GO LIVE" }];
 }
 
 /** สถานะระบบจากข้อมูลจริง: แหล่ง Auto Sync ที่ล้มเหลว / การนำเข้าล่าสุดไม่ผ่าน */

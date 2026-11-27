@@ -1,5 +1,6 @@
 "use client";
 // คอมโพเนนต์พื้นฐาน (OMNIX) — หยิบจากที่นี่ก่อนเขียน markup ใหม่
+import { TiktokLogo } from "./icons";
 import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import type { Member, PlatformCode } from "@/lib/types";
 import { platformByCode } from "@/lib/types";
@@ -98,11 +99,38 @@ export function EmptyState({ title, children, action }: { title: string; childre
 }
 
 export function PlatformBadge({ platform }: { platform: PlatformCode }) {
-  return <span className={`ls-pf-badge pf-${platform}`}>{platformByCode(platform).name}</span>;
+  return <span className={`ls-pf-badge pf-${platform}`}><PlatformMark platform={platform} size={14} />{platformByCode(platform).name}</span>;
 }
 
-export function PlatformMark({ platform }: { platform: PlatformCode }) {
-  return <span className={`ls-pf-mark pf-${platform}`} aria-hidden>{platform === "SHOPEE" ? "S" : "T"}</span>;
+/** ไอคอนแบบแอปของแต่ละ Platform — Shopee: ถุงช้อปปิ้งบนพื้นส้ม · TikTok: โน้ตดนตรีมีเงาฟ้า/แดงบนพื้นดำ */
+export function PlatformMark({ platform, size = 18 }: { platform: PlatformCode; size?: number }) {
+  const style = { width: size, height: size };
+  if (platform === "SHOPEE") {
+    return (
+      <span className="ls-app-ico ls-app-ico--shopee" style={style} aria-hidden>
+        <svg viewBox="0 0 24 24" width="74%" height="74%">
+          <path d="M8.6 8.2V6.9a3.4 3.4 0 0 1 6.8 0v1.3" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M5.2 8.2h13.6l-.9 11.4a1.6 1.6 0 0 1-1.6 1.4H7.7a1.6 1.6 0 0 1-1.6-1.4z" fill="#fff" />
+          <path d="M14.2 12.1c-.4-.6-1.2-.9-2.1-.9-1.2 0-2.1.6-2.1 1.5 0 2.1 4.4 1.1 4.4 3.4 0 1-1 1.6-2.3 1.6-1 0-1.9-.4-2.4-1.1" fill="none" stroke="var(--pf-shopee)" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <span className="ls-app-ico ls-app-ico--tiktok" style={style} aria-hidden>
+      <svg viewBox="0 0 24 24" width="66%" height="66%">
+        <g transform="translate(-0.7 -0.5)" fill="#25f4ee"><TiktokPath /></g>
+        <g transform="translate(0.7 0.5)" fill="#fe2c55"><TiktokPath /></g>
+        <g fill="#fff"><TiktokPath /></g>
+      </svg>
+    </span>
+  );
+}
+
+function TiktokPath() {
+  // ใช้ path จากไอคอนที่สร้างอัตโนมัติ (Boxicons logos: bxl-tiktok)
+  const svg = TiktokLogo({});
+  return <>{svg.props.children}</>;
 }
 
 export function HostDot({ color }: { color: string }) {

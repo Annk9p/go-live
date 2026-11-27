@@ -1,4 +1,4 @@
-# LIVE SCHEDULE — Data Model (Phase 2)
+# GO LIVE — Data Model (Phase 2)
 
 ไฟล์จริง: [`prisma/schema.prisma`](../prisma/schema.prisma) · SQL: [`prisma/migrations/0001_init/migration.sql`](../prisma/migrations/0001_init/migration.sql)
 ชนิดข้อมูลฝั่งหน้าเว็บ: [`lib/types.ts`](../lib/types.ts) (ชื่อฟิลด์ตรงกัน)
