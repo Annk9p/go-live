@@ -27,6 +27,8 @@ export interface BoardProps {
   hostScope?: "all" | "page";
   initialDate?: string;
   initialOpen?: string;
+  /** มุมมองเริ่มต้นของหน้านี้ (ผู้ใช้สลับเองแล้วระบบจำไว้ต่อหน้า) */
+  defaultView?: View;
 }
 
 /** จอเล็ก (< 768px) ใช้มุมมองรายการแทนตารางกว้าง */
@@ -43,12 +45,12 @@ function useIsMobile() {
 
 const HOURS = Array.from({ length: 25 }, (_, i) => i);
 
-export function ScheduleBoard({ pageKey, base, show, shopOptions, emptyAction, initialHost, hostScope = "all", initialDate, initialOpen }: BoardProps) {
+export function ScheduleBoard({ pageKey, base, show, shopOptions, emptyAction, initialHost, hostScope = "all", initialDate, initialOpen, defaultView = "matrix" }: BoardProps) {
   const { db, membersById, shopsById, conflicts, schedulesById } = useStore();
   const { schedules } = useVisibility();
   const today = todayBangkok();
 
-  const [view, setView] = useState<View>("matrix");
+  const [view, setView] = useState<View>(defaultView);
   const [cal, setCal] = useState<CalMode>("week");
   const [date, setDate] = useState(initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) ? initialDate : today);
   const [platform, setPlatform] = useState<PlatformCode | "ALL">("ALL");
@@ -64,10 +66,10 @@ export function ScheduleBoard({ pageKey, base, show, shopOptions, emptyAction, i
 
   // จำรูปแบบการแสดงผลของแต่ละหน้า (ไม่จำตัวกรอง — เปิดหน้าใหม่ได้ค่าเริ่มต้นตามสเปกเสมอ)
   useEffect(() => {
-    const v = storage.get<{ view: View; cal: CalMode }>(`live-schedule:view:${pageKey}`);
+    const v = storage.get<{ view: View; cal: CalMode }>(`live-schedule:view2:${pageKey}`);
     if (v) { setView(v.view); setCal(v.cal); }
   }, [pageKey]);
-  useEffect(() => { storage.set(`live-schedule:view:${pageKey}`, { view, cal }); }, [pageKey, view, cal]);
+  useEffect(() => { storage.set(`live-schedule:view2:${pageKey}`, { view, cal }); }, [pageKey, view, cal]);
 
   /* ---------- กรองข้อมูล ---------- */
   const pageRows = useMemo(() => schedules.filter(base), [schedules, base]);

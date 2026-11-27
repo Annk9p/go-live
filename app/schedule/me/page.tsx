@@ -132,7 +132,7 @@ function MyPage() {
 
           <section id="board" className="ox-stack" aria-labelledby="board-h" style={{ scrollMarginTop: 90 }}>
             <h2 id="board-h" className="ls-section-h">ตารางทั้งหมดของฉัน</h2>
-            <ScheduleBoard key={`me-${me.id}-${date}-${open}`} pageKey="me" base={base} hostScope="page" initialDate={date} initialOpen={open} show={{ platform: true, shop: true }} />
+            <ScheduleBoard key={`me-${me.id}-${date}-${open}`} pageKey="me" base={base} hostScope="page" defaultView="calendar" initialDate={date} initialOpen={open} show={{ platform: true, shop: true }} />
           </section>
         </>
       )}
