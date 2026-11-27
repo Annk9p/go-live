@@ -247,7 +247,7 @@
 @media (min-width: 1024px) { .ls-two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ฟอนต์จาก next/font (แทนชื่อฟอนต์ใน token ด้วยตัวแปรที่ next/font สร้าง) */
-:root { --omnix-font: var(--font-inter), var(--font-plex-thai), var(--font-noto-thai), "Noto Sans SC", system-ui, sans-serif; }
+:root { --omnix-font: "Inter", "IBM Plex Sans Thai", "Noto Sans Thai", "Noto Sans SC", system-ui, sans-serif; }
 .ls-nowrap th, .ls-nowrap td { white-space: nowrap; }
 
 /* KPI 5 ช่อง (Dashboard ตาม Brief) */

@@ -1,19 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, IBM_Plex_Sans_Thai, Noto_Sans_Thai } from "next/font/google";
 import { AppShell } from "@/components/AppShell";
 import "./omnix-ds.css";
 import "./app.css";
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-inter", display: "swap" });
-const plex = IBM_Plex_Sans_Thai({ subsets: ["thai", "latin"], weight: ["400", "500", "600"], variable: "--font-plex-thai", display: "swap" });
-const noto = Noto_Sans_Thai({ subsets: ["thai"], weight: ["400", "500", "600"], variable: "--font-noto-thai", display: "swap" });
+// ฟอนต์โหลดจาก Google Fonts ในเบราว์เซอร์ (ไม่ดาวน์โหลดตอน build — next/font ทำให้ build บน GitHub ล้มเหลวเป็นครั้งคราว)
+const FONTS = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap";
 
 export const metadata: Metadata = { title: "GO LIVE", description: "GO LIVE — ระบบจัดการตารางไลฟ์ Shopee / TikTok ของทีม", applicationName: "GO LIVE" };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th" className={`${inter.variable} ${plex.variable} ${noto.variable}`} suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="stylesheet" href={FONTS} />
+      </head>
       <body>
         <AppShell>{children}</AppShell>
       </body>
