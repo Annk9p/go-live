@@ -1,0 +1,227 @@
+// LIVE SCHEDULE — Phase 2 Database Schema (PostgreSQL บน Railway · Prisma)
+// โครงสร้างหลัก: Platform → Shop → Schedule → Host(Member)
+// กติกา: ไม่มี Brand · Platform มีเพียง SHOPEE / TIKTOK · Shop สังกัด Platform เดียว · Timezone Asia/Bangkok
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// รหัส Platform — จำกัดด้วย enum เพื่อไม่ให้มี Platform อื่น (เช่น Lazada) หลุดเข้ามา
+enum PlatformCode {
+  SHOPEE
+  TIKTOK
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  LIVE
+  DONE
+  CANCELLED
+}
+
+enum ImportTrigger {
+  MANUAL
+  AUTO
+}
+
+enum ImportStatus {
+  APPLIED
+  REJECTED
+  SKIPPED_NO_CHANGE
+  ROLLED_BACK
+}
+
+/// ตาราง Platform (seed 2 แถว: SHOPEE, TIKTOK) — เก็บชื่อแสดงผลและสีประจำแพลตฟอร์ม
+model Platform {
+  code      PlatformCode @id
+  name      String
+  color     String // Shopee #F97316 · TikTok #171717
+  sortOrder Int          @default(0)
+  shops     Shop[]
+
+  @@map("platforms")
+}
+
+/// ร้านค้า — Dynamic: เพิ่มแล้วขึ้นใน Sidebar ใต้ Platform ที่สังกัด (ไม่ใช่ Brand)
+model Shop {
+  id           String       @id @default(cuid())
+  platformCode PlatformCode @map("platform_code")
+  platform     Platform     @relation(fields: [platformCode], references: [code])
+  name         String
+  active       Boolean      @default(true)
+  sortOrder    Int          @default(0) @map("sort_order")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  schedules   Schedule[]
+  syncSources SyncSource[]
+
+  /// ชื่อร้านซ้ำได้ข้าม Platform แต่ห้ามซ้ำใน Platform เดียวกัน
+  @@unique([platformCode, name])
+  /// ใช้เป็น FK คู่ (shop_id, platform_code) จาก schedules เพื่อบังคับว่า Platform ของตารางตรงกับร้าน
+  @@unique([id, platformCode])
+  @@index([platformCode, active, sortOrder])
+  @@map("shops")
+}
+
+/// พนักงาน/ผู้ใช้ระบบ — isHost = true จะแสดงเป็น Host (คอลัมน์ใน Matrix)
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  nickname  String   @default("")
+  email     String   @unique
+  role      Role     @default(EMPLOYEE)
+  isHost    Boolean  @default(true) @map("is_host")
+  color     String // สีประจำตัว Host (hex)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  schedules Schedule[]
+  imports   ImportBatch[] @relation("ImportActor")
+  audits    AuditLog[]
+
+  @@index([isHost, active])
+  @@map("members")
+}
+
+/// ตารางไลฟ์ 1 รายการ
+/// - id คำนวณจาก key (platform|shop|host|date|start|end) → นำเข้าซ้ำไม่สร้างแถวซ้ำ
+/// - เก็บ date + start/end เป็นเวลาท้องถิ่นกรุงเทพฯ และ startsAt/endsAt (timestamptz) สำหรับ query ช่วงเวลา / Conflict
+/// - shopName / hostName เป็นสำเนา ณ เวลานำเข้า (ใช้แสดงผลเมื่อข้อมูลหลักถูกปิดใช้งาน)
+model Schedule {
+  id           String         @id // Schedule ID
+  date         DateTime       @db.Date // วันที่ (Asia/Bangkok)
+  startTime    String         @map("start_time") @db.VarChar(5) // HH:mm
+  endTime      String         @map("end_time") @db.VarChar(5) // HH:mm (< start = ข้ามเที่ยงคืน)
+  startsAt     DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt       DateTime       @map("ends_at") @db.Timestamptz(3)
+  platformCode PlatformCode   @map("platform_code")
+  shopId       String         @map("shop_id")
+  shop         Shop           @relation(fields: [shopId, platformCode], references: [id, platformCode])
+  shopName     String         @map("shop_name")
+  hostId       String         @map("host_id")
+  host         Member         @relation(fields: [hostId], references: [id])
+  hostName     String         @map("host_name")
+  status       ScheduleStatus @default(SCHEDULED)
+  source       String // แหล่งที่มา เช่น gsheet:auto:<sourceId>, csv:manual
+  importRef    String?        @map("import_ref") // Import Reference → import_batches.id
+  importBatch  ImportBatch?   @relation(fields: [importRef], references: [id], onDelete: SetNull)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  /// ดึงตามหน้า: เดือน/วัน + Platform + Shop (= Scope ของการ Replace)
+  @@index([platformCode, shopId, date])
+  @@index([hostId, date])
+  @@index([date])
+  /// สำหรับตรวจ Conflict ระดับ Global (range overlap)
+  @@index([startsAt, endsAt])
+  @@map("schedules")
+}
+
+/// แหล่งข้อมูล Google Sheets สำหรับ Auto Sync — Scope = Platform (+ Shop) · เดือนอ่านจากข้อมูลในชีต
+model SyncSource {
+  id           String       @id @default(cuid())
+  name         String
+  csvUrl       String       @map("csv_url")
+  platformCode PlatformCode @map("platform_code")
+  shopId       String?      @map("shop_id") // null = ทุกร้านใน Platform
+  shop         Shop?        @relation(fields: [shopId], references: [id])
+  enabled      Boolean      @default(true)
+  lastHash     String?      @map("last_hash") // SHA-256 ของเนื้อหาครั้งล่าสุดที่นำเข้าสำเร็จ
+  lastRevision String?      @map("last_revision") // Drive revision id (ถ้าใช้ Google API)
+  lastSyncedAt DateTime?    @map("last_synced_at") @db.Timestamptz(3)
+  lastStatus   String?      @map("last_status")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  batches ImportBatch[]
+
+  @@map("sync_sources")
+}
+
+/// ประวัติการนำเข้า 1 ครั้ง = 1 Scope (เดือน + Platform + Shop|ALL)
+model ImportBatch {
+  id            String        @id @default(cuid())
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  trigger       ImportTrigger
+  sourceId      String?       @map("source_id")
+  source        SyncSource?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  sourceName    String        @map("source_name")
+  scopeMonth    String        @map("scope_month") @db.Char(7) // YYYY-MM
+  scopePlatform PlatformCode  @map("scope_platform")
+  scopeShopId   String?       @map("scope_shop_id") // null = ทุกร้าน
+  status        ImportStatus
+  rowCount      Int           @default(0) @map("row_count")
+  added         Int           @default(0)
+  removed       Int           @default(0)
+  unchanged     Int           @default(0)
+  errorCount    Int           @default(0) @map("error_count")
+  contentHash   String        @map("content_hash")
+  actorId       String?       @map("actor_id") // null = system (Auto Sync)
+  actor         Member?       @relation("ImportActor", fields: [actorId], references: [id])
+  rolledBackAt  DateTime?     @map("rolled_back_at") @db.Timestamptz(3)
+
+  schedules Schedule[]
+  errors    ImportError[]
+  backups   ScheduleBackup[]
+
+  @@index([scopeMonth, scopePlatform, scopeShopId, createdAt])
+  @@index([createdAt])
+  @@map("import_batches")
+}
+
+/// รายการ Error จาก Validation (เมื่อไม่ผ่าน จะไม่ Replace)
+model ImportError {
+  id        String      @id @default(cuid())
+  batchId   String      @map("batch_id")
+  batch     ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  row       Int
+  field     String
+  message   String
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([batchId])
+  @@map("import_errors")
+}
+
+/// สำรองข้อมูลใน Scope ก่อน Replace — ใช้ Rollback (เก็บเป็น JSON snapshot ของแถวเดิม)
+model ScheduleBackup {
+  id        String      @id @default(cuid())
+  batchId   String      @map("batch_id")
+  batch     ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rows      Json // Schedule[] ก่อนถูกแทนที่
+  rowCount  Int         @map("row_count")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([batchId])
+  @@map("schedule_backups")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id      String   @id @default(cuid())
+  at      DateTime @default(now()) @db.Timestamptz(3)
+  actorId String?  @map("actor_id")
+  actor   Member?  @relation(fields: [actorId], references: [id])
+  action  String
+  detail  String
+
+  @@index([at])
+  @@map("audit_logs")
+}

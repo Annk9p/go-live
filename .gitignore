@@ -1,0 +1,12 @@
+node_modules
+.next
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+/.next-build/
+/out/
+/.next-pages/
+/.api-parked/
+*.zip
+.claude/

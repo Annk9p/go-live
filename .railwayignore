@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-build
+.env*
+!.env.example
+*.tsbuildinfo
+.claude
+.next-pages
+out
