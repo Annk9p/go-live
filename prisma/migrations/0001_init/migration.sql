@@ -244,8 +244,10 @@ ALTER TABLE "schedules" ADD CONSTRAINT "schedules_time_format_chk"
 ALTER TABLE "schedules" ADD CONSTRAINT "schedules_range_chk" CHECK ("ends_at" > "starts_at");
 ALTER TABLE "import_batches" ADD CONSTRAINT "import_batches_month_chk" CHECK ("scope_month" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$');
 
--- ตัวอย่าง query ตรวจ Conflict ระดับ Global (start_A < end_B AND end_A > start_B):
+-- ตัวอย่าง query ตรวจ Conflict: เวลาซ้อน (start_A < end_B AND end_A > start_B)
+-- เฉพาะ Host คนเดียวกัน (ข้ามร้าน/Platform) หรือร้านเดียวกัน — คนละร้านคนละ Host ไลฟ์พร้อมกันได้
 -- SELECT a.id, b.id FROM schedules a JOIN schedules b
 --   ON a.id < b.id AND a.starts_at < b.ends_at AND a.ends_at > b.starts_at
+--  AND (a.host_id = b.host_id OR a.shop_id = b.shop_id)
 --  WHERE a.status <> 'CANCELLED' AND b.status <> 'CANCELLED'
 --    AND a.starts_at < $2 AND a.ends_at > $1;   -- จำกัดช่วงเวลาที่ดู

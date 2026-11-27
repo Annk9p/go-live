@@ -78,7 +78,7 @@ function Dashboard() {
       </div>
 
       <div className="ox-card">
-        <div className="ox-card__body" style={{ paddingBottom: 0 }}><div className="ox-section-title"><h2>Conflict ที่ยังไม่ถึงเวลา</h2><span className="ox-xs ox-muted">ตรวจระดับ Global: start_A &lt; end_B และ end_A &gt; start_B</span></div></div>
+        <div className="ox-card__body" style={{ paddingBottom: 0 }}><div className="ox-section-title"><h2>Conflict ที่ยังไม่ถึงเวลา</h2><span className="ox-xs ox-muted">Host คนเดียวกันซ้อนเวลา (ข้ามร้าน/Platform) หรือร้านเดียวกันมีไลฟ์ซ้อน</span></div></div>
         <div className="ox-table-wrap" style={{ border: 0, borderTop: "1px solid var(--omnix-border)", borderRadius: "0 0 8px 8px" }}>
           <table className="ox-table ox-table--data">
             <thead><tr><th>วันที่</th><th>รายการ A</th><th>รายการ B</th></tr></thead>

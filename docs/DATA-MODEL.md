@@ -29,7 +29,7 @@ settings · audit_logs
 | Validation ไม่ผ่าน | บันทึก `import_batches(status=REJECTED)` + `import_errors` แล้ว **ไม่** แตะ `schedules` | ข้อมูลเดิมที่ผ่านการตรวจยังอยู่ครบ |
 | Backup / Rollback | `schedule_backups.rows` (JSON) ต่อ batch · Rollback = แทนที่ Scope ด้วย snapshot | ต้อง Rollback จากใหม่ไปเก่าใน Scope เดียวกัน |
 | Timezone | `date` + `start_time/end_time` (เวลากรุงเทพฯ) และ `starts_at/ends_at` (timestamptz) | แสดงผลตามที่กรอก + query ช่วงเวลา/Conflict ได้เร็ว |
-| Conflict ระดับ Global | `a.starts_at < b.ends_at AND a.ends_at > b.starts_at` (ไม่สนใจ host/shop/platform) · index `(starts_at, ends_at)` | ชนขอบพอดี (10:00 จบ/10:00 เริ่ม) ไม่นับ |
+| Conflict | `a.starts_at < b.ends_at AND a.ends_at > b.starts_at` และ (`a.host_id = b.host_id` หรือ `a.shop_id = b.shop_id`) · index `(host_id, date)`, `(platform_code, shop_id, date)` | คนละร้านคนละ Host ไลฟ์พร้อมกันได้ · Host คนเดียวกันซ้อนไม่ได้ (ข้ามร้าน/Platform) · ร้านเดียวกันซ้อนไม่ได้ · ชนขอบพอดี (10:00 จบ/10:00 เริ่ม) ไม่นับ |
 
 ## รูปแบบ Google Sheets (ต้นทาง)
 

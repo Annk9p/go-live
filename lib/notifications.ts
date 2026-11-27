@@ -6,6 +6,7 @@ import { useStore } from "./store";
 import { useVisibility } from "./visibility";
 import { absInterval, addDays, dayIndex, fmtD, nowBangkokMinutes, todayBangkok } from "./time";
 import { storage } from "./storage";
+import { conflictKey, REASON_LABEL } from "./conflicts";
 
 export type NotiTone = "info" | "danger" | "warning" | "success";
 export interface Noti { id: string; tone: NotiTone; title: string; detail: string; at: string; href: string }
@@ -50,7 +51,7 @@ export function useNotifications() {
     for (const [a, b] of pairs.slice(0, 6)) {
       const who = (s: typeof a) => membersById.get(s.hostId)?.nickname || s.hostName;
       out.push({
-        id: `conflict:${a.id}|${b.id}`, tone: "danger", title: "เวลาไลฟ์ซ้อนทับ",
+        id: `conflict:${a.id}|${b.id}`, tone: "danger", title: REASON_LABEL[conflicts.reasons.get(conflictKey(a.id, b.id)) ?? "HOST"],
         detail: `${fmtD(a.date)} ${a.startTime}–${a.endTime} ${pfName(a.platform)} ${shopName(a.shopId, a.shopName)} (${who(a)}) ซ้อนกับ ${b.startTime}–${b.endTime} ${pfName(b.platform)} ${shopName(b.shopId, b.shopName)} (${who(b)})`,
         at: `${a.date}T${a.startTime}`, href: `/schedule/team?date=${a.date}&open=${a.id}`,
       });

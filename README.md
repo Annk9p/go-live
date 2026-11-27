@@ -15,7 +15,7 @@ npm run typecheck
 
 ## สถานะ
 
-- **Phase 1 (เสร็จ):** Layout + Sidebar (dynamic shop list, expand/collapse), 13 หน้า, Matrix / Calendar (วัน/สัปดาห์/เดือน), ตัวกรองทุกหน้า, Conflict Detection ระดับ Global, Import Center (Preview → Validate → Replace เฉพาะ Scope, History, Error Log, Backup, Rollback, Auto Sync ด้วย SHA-256), จัดการร้าน/พนักงาน, รายงาน, ตั้งค่า + Audit Log — ข้อมูลเก็บในเบราว์เซอร์ (localStorage) ผ่าน `lib/store.tsx`
+- **Phase 1 (เสร็จ):** Layout + Sidebar (dynamic shop list, expand/collapse), 13 หน้า, Matrix / Calendar (วัน/สัปดาห์/เดือน), ตัวกรองทุกหน้า, Conflict Detection (Host คนเดียวกันซ้อนเวลา หรือร้านเดียวกันมีไลฟ์ซ้อน), Import Center (Preview → Validate → Replace เฉพาะ Scope, History, Error Log, Backup, Rollback, Auto Sync ด้วย SHA-256), จัดการร้าน/พนักงาน, รายงาน, ตั้งค่า + Audit Log — ข้อมูลเก็บในเบราว์เซอร์ (localStorage) ผ่าน `lib/store.tsx`
 - **Phase 2 (เสร็จ):** Database schema ที่ `prisma/schema.prisma` + migration SQL — ดูคำอธิบายที่ [docs/DATA-MODEL.md](docs/DATA-MODEL.md)
 - **ถัดไป:** API (NestJS) + Login จริง + ย้าย Auto Sync ไป cron ฝั่งเซิร์ฟเวอร์ + i18n ไทย/English/中文
 

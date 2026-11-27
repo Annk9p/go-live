@@ -8,7 +8,7 @@ import {
   addDays, addMonths, daysInMonth, durationMinutes, fmtD, fmtDY, fmtHours, fmtLong, fmtMonthName, fmtTs, fmtWd,
   nowBangkokMinutes, startOfWeek, todayBangkok, toMinutes, absInterval,
 } from "@/lib/time";
-import { overlaps } from "@/lib/conflicts";
+import { conflictKey, overlaps, REASON_LABEL } from "@/lib/conflicts";
 import { storage } from "@/lib/storage";
 import { Button, EmptyState, HostDot, Modal, PlatformBadge, Segment } from "./ui";
 import { ChevronLeft, ChevronRight, Download, Error as ErrorIcon, Table, Calendar, List, Filter } from "./icons";
@@ -503,15 +503,17 @@ function EventChip({ s, onOpen, conflict, compact, host, hideHost }: { s: Schedu
 
 function ConflictAlert({ pairs, onOpen }: { pairs: [Schedule, Schedule][]; onOpen: (id: string) => void }) {
   const [more, setMore] = useState(false);
-  const { shopsById, membersById } = useStore();
+  const { shopsById, membersById, conflicts } = useStore();
   const name = (s: Schedule) => `${s.platform === "SHOPEE" ? "Shopee" : "TikTok"} · ${shopsById.get(s.shopId)?.name ?? s.shopName} (${membersById.get(s.hostId)?.nickname ?? s.hostName})`;
   const shown = more ? pairs : pairs.slice(0, 3);
   return (
     <div className="ox-alert ox-alert--danger" role="alert" style={{ flexDirection: "column", gap: 6 }}>
-      <strong className="ox-row" style={{ gap: 6 }}><ErrorIcon size={16} />พบเวลาซ้อนทับ {pairs.length} คู่ในช่วงที่แสดง (ตรวจระดับ Global ทุก Host / Shop / Platform)</strong>
+      <strong className="ox-row" style={{ gap: 6 }}><ErrorIcon size={16} />พบเวลาซ้อนทับ {pairs.length} คู่ในช่วงที่แสดง</strong>
+      <span className="ox-xs" style={{ color: "var(--omnix-fg)" }}>นับเมื่อ Host คนเดียวกันอยู่สองที่พร้อมกัน (ข้ามร้าน/Platform) หรือร้านเดียวกันมีไลฟ์ซ้อน — คนละร้านคนละ Host ไลฟ์พร้อมกันได้ตามปกติ</span>
       <ul style={{ margin: 0, paddingLeft: 20, color: "var(--omnix-fg)" }}>
         {shown.map(([a, b]) => (
           <li key={a.id + b.id} className="ox-xs">
+            <span className="ox-badge ox-badge--danger" style={{ marginRight: 6 }}>{REASON_LABEL[conflicts.reasons.get(conflictKey(a.id, b.id)) ?? "HOST"]}</span>
             <span className="ox-num">{fmtD(a.date)}</span>{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); onOpen(a.id); }}>{a.startTime}–{a.endTime} {name(a)}</a> ซ้อนกับ{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); onOpen(b.id); }}>{b.date !== a.date ? `${fmtD(b.date)} ` : ""}{b.startTime}–{b.endTime} {name(b)}</a>
@@ -547,7 +549,7 @@ export function EventModal({ id, onClose, onOpen }: { id: string; onClose: () =>
           <strong>เวลาซ้อนทับกับ {others.length} รายการ</strong>
           {others.map((o) => (
             <a key={o.id} href="#" className="ox-xs" onClick={(e) => { e.preventDefault(); onOpen(o.id); }}>
-              {fmtD(o.date)} {o.startTime}–{o.endTime} · {o.platform === "SHOPEE" ? "Shopee" : "TikTok"} · {shopsById.get(o.shopId)?.name ?? o.shopName} · {membersById.get(o.hostId)?.name ?? o.hostName}
+              [{REASON_LABEL[conflicts.reasons.get(conflictKey(s.id, o.id)) ?? "HOST"]}] {fmtD(o.date)} {o.startTime}–{o.endTime} · {o.platform === "SHOPEE" ? "Shopee" : "TikTok"} · {shopsById.get(o.shopId)?.name ?? o.shopName} · {membersById.get(o.hostId)?.name ?? o.hostName}
             </a>
           ))}
         </div>

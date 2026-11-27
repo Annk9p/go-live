@@ -4,7 +4,8 @@ import { detectConflicts } from "../lib/conflicts.ts";
 import { validateRows, replaceScope, diffScope } from "../lib/import.ts";
 import type { Member, Schedule, Shop } from "../lib/types.ts";
 
-const mk = (id: string, s: string, e: string, date = "2026-11-26"): any => ({ id, date, startTime: s, endTime: e, status: "SCHEDULED" });
+// ค่าเริ่มต้น: Host เดียวกัน ร้านเดียวกัน (กรณีที่ต้องเป็น Conflict)
+const mk = (id: string, s: string, e: string, date = "2026-11-26", hostId = "h1", shopId = "s1"): any => ({ id, date, startTime: s, endTime: e, status: "SCHEDULED", hostId, shopId });
 
 test("conflict: ชนขอบพอดีไม่นับ", () => {
   assert.equal(detectConflicts([mk("a", "09:00", "10:00"), mk("b", "10:00", "11:00")]).pairs.length, 0);
@@ -24,6 +25,24 @@ test("conflict: ยกเลิกแล้วไม่นับ", () => {
 test("conflict: ซ้อน 3 รายการ", () => {
   const r = detectConflicts([mk("a", "09:00", "12:00"), mk("b", "10:00", "11:00"), mk("c", "10:30", "13:00")]);
   assert.equal(r.pairs.length, 3);
+});
+test("conflict: คนละ Host คนละร้าน ไลฟ์พร้อมกันได้ (ไม่ Conflict)", () => {
+  const r = detectConflicts([mk("a", "09:00", "11:00", "2026-11-26", "h1", "s1"), mk("b", "09:00", "11:00", "2026-11-26", "h2", "t1")]);
+  assert.equal(r.pairs.length, 0);
+});
+test("conflict: Host เดียวกัน คนละร้าน/คนละ Platform = Conflict (HOST)", () => {
+  const r = detectConflicts([mk("a", "14:00", "16:00", "2026-12-13", "namtan", "shp_shopee_eloopth"), mk("b", "15:00", "16:00", "2026-12-13", "namtan", "shp_tiktok_eloopth")]);
+  assert.deepEqual(r.pairs, [["a", "b"]]);
+  assert.equal(r.reasons.get("a|b"), "HOST");
+});
+test("conflict: ร้านเดียวกัน คนละ Host = Conflict (SHOP)", () => {
+  const r = detectConflicts([mk("a", "10:00", "12:00", "2026-12-01", "h1", "s1"), mk("b", "11:00", "13:00", "2026-12-01", "h2", "s1")]);
+  assert.equal(r.reasons.get("a|b"), "SHOP");
+});
+test("conflict: Host และร้านเดียวกัน นับคู่เดียว (BOTH)", () => {
+  const r = detectConflicts([mk("a", "10:00", "12:00"), mk("b", "11:00", "13:00")]);
+  assert.equal(r.pairs.length, 1);
+  assert.equal(r.reasons.get("a|b"), "BOTH");
 });
 
 const shops: Shop[] = [
