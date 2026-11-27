@@ -53,7 +53,9 @@ function Dashboard() {
       <div className="ox-filter-bar">
         <label className="ls-filter-field"><span className="ox-label">เดือน</span><input type="month" className="ox-control" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} /></label>
         <span className="ox-filter-bar__spacer" />
-        <span className="ox-filter-bar__meta">นำเข้าล่าสุด {fmtTs(lastImport?.createdAt)} · Auto Sync {db.settings.autoSyncEnabled ? `เปิด (ทุก ${db.settings.autoSyncIntervalMin} นาที)` : "ปิด"}</span>
+        <span className="ox-filter-bar__meta">{db.published
+          ? <>ซิงก์จาก Google Sheets ล่าสุด {fmtTs(db.published.generatedAt)} · อัตโนมัติทุก 30 นาที</>
+          : <>นำเข้าล่าสุด {fmtTs(lastImport?.createdAt)} · Auto Sync {db.settings.autoSyncEnabled ? `เปิด (ทุก ${db.settings.autoSyncIntervalMin} นาที)` : "ปิด"}</>}</span>
       </div>
 
       <div className="ox-kpi-grid ls-kpi-5">
