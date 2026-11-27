@@ -10,33 +10,100 @@ import { AdminOnly } from "@/components/AdminOnly";
 import { Button, EmptyState, Field, Modal, PageHead, PlatformBadge, Segment, Toggle, useAction, useToast } from "@/components/ui";
 import { Download, Edit, Plus, Refresh, Sheet, Trash, Undo } from "@/components/icons";
 
-type Tab = "manual" | "sync" | "history" | "errors";
+type Tab = "sheet" | "manual" | "sync" | "history" | "errors";
 
 export default function ImportPage() {
   return <AdminOnly><Suspense fallback={<div className="ox-skeleton" style={{ height: 400 }} />}><ImportInner /></Suspense></AdminOnly>;
 }
 
 function ImportInner() {
-  const [tab, setTab] = useState<Tab>("manual");
+  const { db: db0 } = useStore();
+  const [tab, setTab] = useState<Tab>(db0.published ? "sheet" : "manual");
   const [errBatch, setErrBatch] = useState<string | null>(null);
   const { db } = useStore();
   // เปิดแท็บจากลิงก์ (เช่น จากการแจ้งเตือน: ?tab=errors)
   const qTab = useSearchParams().get("tab");
-  useEffect(() => { if (qTab === "manual" || qTab === "sync" || qTab === "history" || qTab === "errors") setTab(qTab); }, [qTab]);
+  useEffect(() => { if (qTab === "sheet" || qTab === "manual" || qTab === "sync" || qTab === "history" || qTab === "errors") setTab(qTab); }, [qTab]);
   return (
     <>
       <PageHead title="นำเข้าข้อมูล" desc="Google Sheets คือแหล่งข้อมูลต้นทาง — ตรวจสอบก่อน Replace และแทนที่เฉพาะ Scope ที่เลือกเท่านั้น" />
       <Segment<Tab> label="ส่วนของหน้า" value={tab} onChange={setTab} options={[
+        ...(db.published ? [{ value: "sheet" as Tab, label: "Google Sheets (อัตโนมัติ)" }] : []),
         { value: "manual", label: "นำเข้าด้วยตนเอง" },
         { value: "sync", label: `Auto Sync (${db.sources.length})` },
         { value: "history", label: "ประวัติการนำเข้า" },
         { value: "errors", label: "Error Log" },
       ]} />
+      {tab === "sheet" && <SheetSync />}
+      {tab === "manual" && db.published && <div className="ox-alert ox-alert--warning">ข้อมูลกลางมาจาก Google Sheets อัตโนมัติ — การนำเข้าด้วยตนเองในหน้านี้มีผลเฉพาะเบราว์เซอร์นี้ และจะถูกแทนที่เมื่อเปิดเว็บครั้งถัดไป ใช้สำหรับทดลองตรวจไฟล์เท่านั้น</div>}
       {tab === "manual" && <ManualImport />}
       {tab === "sync" && <SyncSources />}
       {tab === "history" && <History onErrors={(id) => { setErrBatch(id); setTab("errors"); }} />}
       {tab === "errors" && <ErrorLog batchId={errBatch} onClear={() => setErrBatch(null)} />}
     </>
+  );
+}
+
+/* ---------------- Google Sheets (ซิงก์อัตโนมัติผ่าน GitHub Actions) ---------------- */
+function SheetSync() {
+  const { db } = useStore();
+  const p = db.published!;
+  const total = db.schedules.length;
+  const hosts = db.members.filter((m) => m.isHost).length;
+  const bad = p.tabs.filter((t) => t.status === "ERROR_KEPT");
+  const statusBadge = (s: string) => s === "OK" ? <span className="ox-badge ox-badge--success">ผ่าน · แทนที่แล้ว</span>
+    : s === "ERROR_KEPT" ? <span className="ox-badge ox-badge--danger">ไม่ผ่าน · คงข้อมูลเดิม</span>
+    : <span className="ox-badge">ข้าม</span>;
+  return (
+    <div className="ox-stack">
+      <div className="ls-stat-row">
+        <div className="ls-stat"><div className="ox-xs ox-muted">แหล่งข้อมูล</div><div className="ls-stat__v" style={{ fontSize: 15 }}><a href={p.source.url} target="_blank" rel="noreferrer">{p.source.title}</a></div></div>
+        <div className="ls-stat"><div className="ox-xs ox-muted">ซิงก์ล่าสุด</div><div className="ls-stat__v" style={{ fontSize: 15 }}>{fmtTs(p.generatedAt)}</div></div>
+        <div className="ls-stat"><div className="ox-xs ox-muted">แท็บ (เดือน × Platform)</div><div className="ls-stat__v">{p.tabs.length}</div></div>
+        <div className="ls-stat"><div className="ox-xs ox-muted">ไลฟ์ทั้งหมด</div><div className="ls-stat__v">{total.toLocaleString("th-TH")}</div></div>
+        <div className="ls-stat"><div className="ox-xs ox-muted">Host</div><div className="ls-stat__v">{hosts}</div></div>
+      </div>
+      {bad.length > 0
+        ? <div className="ox-alert ox-alert--danger">มี {bad.length} แท็บที่ไม่ผ่านการตรวจ — ระบบไม่แทนที่และคงข้อมูลเดิมของเดือนนั้นไว้ แก้ในชีตตามรายการด้านล่าง แล้วรอรอบซิงก์ถัดไป</div>
+        : <div className="ox-alert ox-alert--success">ทุกแท็บผ่านการตรวจ — ข้อมูลบนเว็บตรงกับชีตแล้ว</div>}
+      <div className="ox-table-wrap">
+        <table className="ox-table ox-table--data ls-nowrap">
+          <thead><tr><th>แท็บในชีต</th><th>Platform</th><th>เดือน</th><th>ร้าน</th><th className="is-num">ไลฟ์</th><th>ผลการตรวจ</th></tr></thead>
+          <tbody>
+            {p.tabs.map((t) => (
+              <tr key={t.name}>
+                <td style={{ fontWeight: 500 }}>{t.name}</td>
+                <td>{t.platform ? <PlatformBadge platform={t.platform} /> : "—"}</td>
+                <td className="ox-num">{t.month ?? "—"}</td>
+                <td>{t.shops.length ? t.shops.join(", ") : <span className="ox-muted">ยังไม่มีบล็อกร้าน</span>}</td>
+                <td className="is-num">{t.sessions}</td>
+                <td>{statusBadge(t.status)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {p.tabs.some((t) => t.errors.length || t.warnings.length) && (
+        <div className="ox-table-wrap">
+          <table className="ox-table ox-table--data">
+            <thead><tr><th>แท็บ</th><th className="is-num">แถว</th><th>รายละเอียด</th></tr></thead>
+            <tbody>
+              {p.tabs.flatMap((t) => [
+                ...t.errors.map((e, i) => <tr key={`${t.name}e${i}`}><td>{t.name}</td><td className="is-num">{e.row || "—"}</td><td><span className="ox-badge ox-badge--danger">Error</span> {e.message}</td></tr>),
+                ...t.warnings.map((w, i) => <tr key={`${t.name}w${i}`}><td>{t.name}</td><td className="is-num">{w.row || "—"}</td><td><span className="ox-badge">หมายเหตุ</span> {w.message}</td></tr>),
+              ])}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="ox-card"><div className="ox-card__body ox-xs ox-muted" style={{ gap: 4 }}>
+        <div><strong style={{ color: "var(--omnix-fg)" }}>ทำงานอย่างไร</strong></div>
+        <div>• GitHub ดึงชีตทุก 30 นาที (และทุกครั้งที่อัปเดตเว็บ) อ่านทุกแท็บที่ชื่อแบบ “Shopee MM/YYYY” / “Tiktok MM/YYYY” — เพิ่มแท็บเดือนใหม่ได้เลย ไม่ต้องแก้ระบบ</div>
+        <div>• 1 แท็บ = 1 เดือน + 1 Platform · แต่ละบล็อกในแท็บ = 1 ร้าน · ช่องว่าง = ไม่มีไลฟ์ · ช่วงเวลาติดกันของ Host เดียวกันรวมเป็นไลฟ์เดียว</div>
+        <div>• แท็บที่ผ่าน → แทนที่ข้อมูลเฉพาะเดือน + Platform นั้น · แท็บที่ไม่ผ่าน → ไม่แทนที่ ข้อมูลเดิมยังอยู่ · ข้อมูลไม่เปลี่ยน → ไม่อัปเดตเว็บ</div>
+        <div>• ร้านในชีตที่ยังไม่มีในระบบจะถูกเพิ่มใต้ Platform นั้นอัตโนมัติ · ชื่อ Host ในชีตจะกลายเป็น Host ในระบบ</div>
+      </div></div>
+    </div>
   );
 }
 

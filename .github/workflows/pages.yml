@@ -1,9 +1,15 @@
-# Build เว็บแบบไฟล์ล้วนแล้วขึ้น GitHub Pages ทุกครั้งที่ push เข้า main
+# ซิงก์ Google Sheets → build เว็บแบบไฟล์ล้วน → ขึ้น GitHub Pages
+# - push เข้า main / กดสั่งเอง: ซิงก์ + deploy เสมอ
+# - ทุก 30 นาที: ซิงก์ แล้ว deploy เฉพาะเมื่อข้อมูลในชีตเปลี่ยน
+# - แท็บที่ไม่ผ่านการตรวจ: ไม่แทนที่ คงข้อมูลเดิม (ขึ้นคำเตือนในหน้า Actions และหน้า "นำเข้าข้อมูล")
+# - ดึงชีตไม่ได้: งานล้มเหลว ไม่ deploy เว็บยังใช้ข้อมูลเดิม
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -13,11 +19,17 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+env:
+  # รหัสชีตกลาง (ชีตต้องแชร์แบบ "ทุกคนที่มีลิงก์ดูได้")
+  SHEET_ID: 1-fw2Yxngnr3nn2pQugswKimx4U2jT4ppCj6faOgWm58
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.decide.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,17 +39,29 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v5
       - run: npm ci
-      - run: npm test
-      - run: npm run build:pages
+      - id: sync
+        name: Sync Google Sheets
+        run: node scripts/sync-sheet.ts
+        env:
+          PREV_URL: ${{ steps.pages.outputs.base_url }}/data/schedule.json
+      - id: decide
+        run: echo "deploy=${{ github.event_name != 'schedule' || steps.sync.outputs.changed == 'true' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.decide.outputs.deploy == 'true'
+        run: npm test
+      - if: steps.decide.outputs.deploy == 'true'
+        run: npm run build:pages
         env:
           NEXT_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-      - run: touch out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
+      - if: steps.decide.outputs.deploy == 'true'
+        run: touch out/.nojekyll
+      - if: steps.decide.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
   deploy:
     needs: build
+    if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

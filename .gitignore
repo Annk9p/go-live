@@ -10,3 +10,5 @@ next-env.d.ts
 /.api-parked/
 *.zip
 .claude/
+# สร้างจาก Google Sheets ตอน build (npm run sync)
+/public/data/

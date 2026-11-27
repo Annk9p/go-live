@@ -5,7 +5,7 @@ const isStatic = process.env.STATIC_EXPORT === "1";
 const nextConfig = {
   reactStrictMode: true,
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  env: { NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "0" },
+  env: { NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "0", NEXT_PUBLIC_BASE_PATH: isStatic ? process.env.NEXT_BASE_PATH || "" : "" },
   ...(isStatic ? { output: "export", basePath: process.env.NEXT_BASE_PATH || "", images: { unoptimized: true } } : {}),
 };
 export default nextConfig;

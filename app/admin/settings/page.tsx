@@ -53,13 +53,15 @@ function Settings() {
 
       <Card>
         <SectionTitle title="ข้อมูลตัวอย่าง (Mock Data)" />
-        {hasDemo ? (
+        {db.published ? (
+          <div className="ox-alert ox-alert--success">ตอนนี้ใช้ข้อมูลจริงจาก Google Sheets “{db.published.source.title}” (ซิงก์ล่าสุด {fmtTs(db.published.generatedAt)}) — ไม่มีข้อมูลตัวอย่าง</div>
+        ) : hasDemo ? (
           <div className="ox-alert ox-alert--warning">ขณะนี้มีข้อมูลตัวอย่างสำหรับทดสอบ UI (พนักงานและตารางไลฟ์ที่ขึ้นต้นด้วย “Demo”) — ห้ามใช้เป็นข้อมูลจริง ล้างทิ้งก่อนเริ่มนำเข้าข้อมูลจริง · ร้านค้า (EloopTH, MoovTH, EloopPB) เป็นร้านจริงและจะไม่ถูกลบ</div>
         ) : <p className="ox-muted">ไม่มีข้อมูลตัวอย่างในระบบ</p>}
-        <div className="ox-row">
+        {!db.published && <div className="ox-row">
           <Button variant="danger" disabled={!hasDemo} onClick={() => confirm("ล้างข้อมูลตัวอย่างทั้งหมด? (บัญชีที่กำลังใช้งานจะถูกเก็บไว้) การล้างย้อนกลับไม่ได้") && act(clearDemo, "ล้างข้อมูลตัวอย่างแล้ว")}>ล้างข้อมูลตัวอย่าง</Button>
           <Button variant="ghost" onClick={() => confirm("รีเซ็ตทั้งระบบกลับเป็นข้อมูลตัวอย่าง? ตารางที่นำเข้า พนักงาน และประวัติทั้งหมดจะหายไป (ร้านค้าจะยังอยู่)") && act(resetDemo, "รีเซ็ตเป็นข้อมูลตัวอย่างแล้ว")}>รีเซ็ตเป็นข้อมูลตัวอย่าง</Button>
-        </div>
+        </div>}
       </Card>
 
       <section className="ox-stack">

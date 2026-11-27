@@ -160,9 +160,9 @@ function WorkspaceCard() {
     <div className="ls-ws-card">
       <div className="ls-ws-card__title">สถานะพื้นที่ทำงาน</div>
       <div className="ls-ws-card__line">
-        {hasDemo ? <>ข้อมูลตัวอย่าง · โหมดทดลอง</> : <>ข้อมูลจริง · {sync}</>}
+        {db.published ? <>ข้อมูลจริงจาก Google Sheets</> : hasDemo ? <>ข้อมูลตัวอย่าง · โหมดทดลอง</> : <>ข้อมูลจริง · {sync}</>}
       </div>
-      {hasDemo && <div className="ls-ws-card__line">{sync}</div>}
+      <div className="ls-ws-card__line">{db.published ? <>ซิงก์ล่าสุด {fmtTs(db.published.generatedAt)}</> : hasDemo ? sync : null}</div>
       <div className="ls-ws-card__k">เข้าสู่ระบบเป็น</div>
       <div className="ls-ws-card__me">
         <Avatar member={me} />
@@ -204,6 +204,13 @@ function useCrumbs(): Crumb[] {
 /** สถานะระบบจากข้อมูลจริง: แหล่ง Auto Sync ที่ล้มเหลว / การนำเข้าล่าสุดไม่ผ่าน */
 function useSystemStatus(): { tone: "ok" | "warn"; text: string } {
   const { db } = useStore();
+  const badTabs = db.published?.tabs.filter((t) => t.status === "ERROR_KEPT").length ?? 0;
+  if (badTabs) return { tone: "warn", text: `ชีตมีข้อผิดพลาด ${badTabs} แท็บ` };
+  if (db.published) {
+    const ageMin = (Date.now() - new Date(db.published.generatedAt).getTime()) / 60000;
+    if (ageMin > 120) return { tone: "warn", text: "ซิงก์ชีตล่าช้า" };
+    return { tone: "ok", text: "ซิงก์ชีตแล้ว" };
+  }
   const failing = db.sources.filter((s) => s.enabled && s.lastStatus && /ล้มเหลว|ไม่ผ่าน/.test(s.lastStatus));
   if (failing.length) return { tone: "warn", text: `Auto Sync มีปัญหา ${failing.length} แหล่ง` };
   const last = db.imports[0];
@@ -213,7 +220,7 @@ function useSystemStatus(): { tone: "ok" | "warn"; text: string } {
 
 function Header({ onMenu, open }: { onMenu: () => void; open: boolean }) {
   const crumbs = useCrumbs();
-  const { isAdmin } = useStore();
+  const { isAdmin, db: db0 } = useStore();
   const status = useSystemStatus();
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayBangkok()), []);
@@ -239,7 +246,7 @@ function Header({ onMenu, open }: { onMenu: () => void; open: boolean }) {
       </div>
       <span className="ls-header__spacer" />
       {isAdmin
-        ? <Link href="/admin/import?tab=sync" className={`ls-status is-${status.tone} ls-hide-md`} title="ดูสถานะการนำเข้าและ Auto Sync">{pill}</Link>
+        ? <Link href={db0.published ? "/admin/import?tab=sheet" : "/admin/import?tab=sync"} className={`ls-status is-${status.tone} ls-hide-md`} title="ดูสถานะการนำเข้าและ Auto Sync">{pill}</Link>
         : <span className={`ls-status is-${status.tone} ls-hide-md`}>{pill}</span>}
       <Notifications />
       <ProfileMenu />

@@ -145,4 +145,13 @@ export interface Db {
   settings: Settings;
   audit: AuditLog[];
   currentUserId: string;
+  /** ข้อมูลกลางที่ซิงก์จาก Google Sheets (มีเมื่อเว็บโหลด data/schedule.json ได้) */
+  published?: PublishedMeta;
+}
+
+export interface PublishedMeta {
+  generatedAt: string;
+  hash: string;
+  source: { title: string; url: string };
+  tabs: { name: string; platform: PlatformCode | null; month: string | null; status: "OK" | "ERROR_KEPT" | "SKIPPED"; sessions: number; shops: string[]; errors: { row: number; message: string }[]; warnings: { row: number; message: string }[] }[];
 }

@@ -8,6 +8,8 @@ import { buildMockDb, DB_VERSION } from "./mock-data";
 import { storage } from "./storage";
 import { detectConflicts, type ConflictResult } from "./conflicts";
 import { diffScope, inScope, replaceScope, type RowError } from "./import";
+import type { PublishedData } from "./published";
+import { absInterval, dayIndex, nowBangkokMinutes, todayBangkok } from "./time";
 
 const KEY = "live-schedule:db";
 const uid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
@@ -57,10 +59,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const ref = useRef<Db | null>(null);
 
   useEffect(() => {
-    const saved = storage.get<Db>(KEY);
-    const init = saved && saved.version === DB_VERSION ? saved : buildMockDb();
-    ref.current = init;
-    setDbState(init);
+    let alive = true;
+    (async () => {
+      const saved = storage.get<Db>(KEY);
+      const base = saved && saved.version === DB_VERSION ? saved : buildMockDb();
+      // ข้อมูลกลางจาก Google Sheets (สร้างโดย GitHub Actions) — ถ้ามี ใช้แทนข้อมูลตัวอย่างทั้งหมด
+      const pub = await loadPublished();
+      const init = pub ? applyPublished(base, pub) : base;
+      if (!alive) return;
+      ref.current = init;
+      setDbState(init);
+      if (pub) storage.set(KEY, init);
+    })();
+    return () => { alive = false; };
   }, []);
 
   const commit = useCallback((next: Db) => {
@@ -234,6 +245,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   if (!db || !derived) return <BootSkeleton />;
   return <Ctx.Provider value={{ db, ...derived, ...actions }}>{children}</Ctx.Provider>;
+}
+
+/* ---------- ข้อมูลกลางจาก Google Sheets ---------- */
+async function loadPublished(): Promise<PublishedData | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/data/schedule.json`, { cache: "no-store", signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const d = (await r.json()) as PublishedData;
+    return d && d.version === 1 && Array.isArray(d.schedules) ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/** รวมข้อมูลกลางเข้ากับข้อมูลในเครื่อง: ตาราง/Host/ร้านมาจากชีต · คงการตั้งค่าที่ Admin แก้ในเครื่อง (สิทธิ์ สี เปิด/ปิด) */
+export function applyPublished(d: Db, p: PublishedData): Db {
+  const nowAbs = dayIndex(todayBangkok()) * 1440 + nowBangkokMinutes();
+  const localMembers = new Map(d.members.filter((m) => !m.isDemo).map((m) => [m.id, m]));
+  const admin0 = d.members.find((m) => m.id === "mem_admin");
+  const admin: Member = { id: "mem_admin", name: "ผู้ดูแลระบบ", nickname: "Admin", email: "", role: "ADMIN", isHost: false, color: "#5b5bd6", active: true, ...(admin0 && !admin0.isDemo ? admin0 : {}), isDemo: false };
+  const hosts = p.members.map((m) => {
+    const l = localMembers.get(m.id);
+    return l ? { ...m, role: l.role, color: l.color, active: l.active, email: l.email, isDemo: false } : m;
+  });
+  const extraMembers = d.members.filter((m) => !m.isDemo && m.id !== "mem_admin" && !p.members.some((x) => x.id === m.id));
+  const localShops = new Map(d.shops.filter((s) => !s.isDemo).map((s) => [s.id, s]));
+  const shops = [
+    ...p.shops.map((s) => { const l = localShops.get(s.id); return l ? { ...s, active: l.active, sortOrder: l.sortOrder } : s; }),
+    ...d.shops.filter((s) => !s.isDemo && !p.shops.some((x) => x.id === s.id)),
+  ];
+  // สถานะตามเวลา: ไลฟ์ที่จบแล้ว = เสร็จแล้ว
+  const schedules = p.schedules.map((s) => (s.status === "SCHEDULED" && absInterval(s)[1] <= nowAbs ? { ...s, status: "DONE" as const } : s));
+  const members = [admin, ...extraMembers, ...hosts];
+  return {
+    ...d,
+    shops,
+    members,
+    schedules,
+    currentUserId: members.some((m) => m.id === d.currentUserId) ? d.currentUserId : "mem_admin",
+    published: { generatedAt: p.generatedAt, hash: p.hash, source: p.source, tabs: p.tabs },
+  };
 }
 
 function sameScopeOverlap(a: ImportScope, b: ImportScope) {
